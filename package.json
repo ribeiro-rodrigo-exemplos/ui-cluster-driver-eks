@@ -1,7 +1,7 @@
 {
-    "name": "ui-cluster-driver-doks",
+    "name": "ui-cluster-driver-eks",
     "version": "0.0.1",
-    "description": "DOKS Rancher UI driver for DOKS (DigitalOcean Kubernetes Service) cluster drivers",
+    "description": "EKS Rancher cluster driver",
     "repository": {
         "type": "git",
         "url": ""
@@ -36,5 +36,12 @@
         "jshint": "2.9.7",
         "replace-string": "^2.0.0",
         "yargs": "12.0.5"
+    },
+    "dependencies": {
+        "@ember/jquery": "^0.6.0",
+        "aws-sdk": "^2.706.0",
+        "jquery": "^3.5.0",
+        "rsvp": "^4.8.5",
+        "semver": "^7.2.0"
     }
 }
