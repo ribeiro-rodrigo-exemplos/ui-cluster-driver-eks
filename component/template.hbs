@@ -11,7 +11,7 @@
         <label class="acc-label">
             {{t "nodeDriver.amazoneks.region.label"}}
         </label>
-        {{#if (eq step 1)}}
+        {{#if (and (eq mode "new") (eq step 1))}}
         <select class="form-control" onchange={{action (mut cluster.eksEngineConfig.region) value="target.value"}}>
             {{#each regionChoices as |choice|}}
             <option value={{choice}} selected={{eq cluster.eksEngineConfig.region choice}}>{{choice}}</option>
@@ -113,7 +113,7 @@
             value=cluster.eksEngineConfig.kubernetesVersion
           }}
         {{#if editing}}
-        <p class="help-block">{{t "formVersions.eks.helpBlock"}}</p>
+        <!--p class="help-block">{{t "formVersions.eks.helpBlock"}}</p-->
         {{/if}}
     </div>
     <div class="col span-6">

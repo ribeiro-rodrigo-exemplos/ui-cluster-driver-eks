@@ -33,6 +33,7 @@ const VERSIONS = ['1.15', '1.14', '1.13']; // sort newest->oldest so we dont hav
 
 /*!!!!!!!!!!!DO NOT CHANGE START!!!!!!!!!!!*/
 export default Ember.Component.extend(ClusterDriver, {
+    intl: service(),
     driverName: '%%DRIVERNAME%%',
     configField: '%%DRIVERNAME%%EngineConfig', // 'googleKubernetesEngineConfig'
     app: service(),
@@ -62,7 +63,7 @@ export default Ember.Component.extend(ClusterDriver, {
 
     parseCloudProviderVersionChoices(versions, providerVersion, mode) {
         let {
-            app,
+            intl,
             defaultK8sVersionRange
         } = this;
         const maxVersionRange = defaultK8sVersionRange.split(' ').pop();
@@ -78,7 +79,7 @@ export default Ember.Component.extend(ClusterDriver, {
                     if (Semver.lt(coerceVersion(version), coerceVersion(providerVersion))) {
                         setProperties(out, {
                             disabled: true,
-                            label: `${out.label} ${app.t('formVersions.downgrade')}`
+                            label: `${out.label} ${intl.t('formVersions.downgrade')}`
                         });
                     }
                 }
@@ -136,8 +137,8 @@ export default Ember.Component.extend(ClusterDriver, {
                     set(this, 'cluster.%%DRIVERNAME%%EngineConfig.accessKey', null);
                 }
 
-                console.log('indo para o step 6');
-                set(this, 'step', 6);
+                //console.log('indo para o step 6');
+                //set(this, 'step', 6);
             }
 
         }
