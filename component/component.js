@@ -3,7 +3,7 @@
 import ClusterDriver from 'shared/mixins/cluster-driver';
 //import AWS from 'aws-sdk'
 import $ from 'jquery';
-import { minor, coerce } from 'semver';
+import Semver, { minor, coerce } from 'semver';
 import { INSTANCE_TYPES, nameFromResource, tagsFromResource } from 'shared/utils/amazon';
 import C from 'shared/utils/constants';
 import { satisfies, coerceVersion } from 'shared/utils/parse-version';
@@ -105,12 +105,12 @@ export default Ember.Component.extend(ClusterDriver, {
             allSubnets: []
         })
 
-        let config = get(this, 'config');
+        let config = get(this, 'cluster.%%DRIVERNAME%%EngineConfig');
         let configField = get(this, 'configField');
 
         console.log('antes -- ' + Object.isExtensible(config))
 
-        if (true) {
+        if (!config) {
             config = this.get('globalStore').createRecord({
                 type: configField,
                 accessKey: null,
@@ -164,7 +164,7 @@ export default Ember.Component.extend(ClusterDriver, {
                 return selectedOptions.push(cap.value);
             });
 
-            set(this, 'config.securityGroups', selectedOptions);
+            set(this, 'cluster.%%DRIVERNAME%%EngineConfig.securityGroups', selectedOptions);
         },
         multiSubnetGroupSelect() {
             let options = Array.prototype.slice.call($('.existing-subnet-groups')[0], 0);
@@ -174,7 +174,7 @@ export default Ember.Component.extend(ClusterDriver, {
                 return selectedOptions.push(cap.value);
             });
 
-            set(this, 'config.subnets', selectedOptions);
+            set(this, 'cluster.%%DRIVERNAME%%EngineConfig.subnets', selectedOptions);
         },
         awsLogin(cb) {
             this.listRoles(this.authCreds()).then((roles) => {
@@ -235,7 +235,7 @@ export default Ember.Component.extend(ClusterDriver, {
         },
         loadVPS(cb) {
             if (get(this, 'selectedServiceRole')) {
-                set(this, 'config.serviceRole', get(this, 'selectedServiceRole'));
+                set(this, 'cluster.%%DRIVERNAME%%EngineConfig.serviceRole', get(this, 'selectedServiceRole'));
             }
 
             this.loadVpcs(this.authCreds()).then(() => {
@@ -273,15 +273,23 @@ export default Ember.Component.extend(ClusterDriver, {
             });
         },
 
-        save() {
+        save(cb) {
             // temporary measure put in place for rancher/rancher#24652
-            const { config: { subnets } } = this;
+            console.log('caiu aqui')
+            const {
+                cluster: {
+                    eksEngineConfig: { subnets }
+                }
+            } = this;
 
             if (isEmpty(subnets)) {
-                set(this, 'config.subnets', []);
+                set(this, 'cluster.%%DRIVERNAME%%EngineConfig.subnets', []);
             }
-
+            console.log(arguments);
             return this._super(...arguments);
+            //console.log('chamando save');
+            //this.send('driverSave', cb);
+            //console.log('chamou save');
         },
         cancel() {
             // probably should not remove this as its what every other driver uses to get back
@@ -289,15 +297,15 @@ export default Ember.Component.extend(ClusterDriver, {
         },
     },
 
-    publicIpChanged: observer('step', 'config.associateWorkerNodePublicIp', function () {
-        if (!get(this, 'config.associateWorkerNodePublicIp')) {
+    publicIpChanged: observer('step', 'cluster.%%DRIVERNAME%%EngineConfig.associateWorkerNodePublicIp', function () {
+        if (!get(this, 'cluster.%%DRIVERNAME%%EngineConfig.associateWorkerNodePublicIp')) {
             set(this, 'vpcSubnetMode', 'custom');
         }
     }),
 
-    desiredNodesChanged: observer('config.desiredNodes', function () {
-        const desiredNodes = get(this, 'config.desiredNodes');
-        const config = get(this, 'config');
+    desiredNodesChanged: observer('cluster.%%DRIVERNAME%%EngineConfig.desiredNodes', function () {
+        const desiredNodes = get(this, 'cluster.%%DRIVERNAME%%EngineConfig.desiredNodes');
+        const config = get(this, 'cluster.%%DRIVERNAME%%EngineConfig');
 
         setProperties(config, {
             minimumNodes: desiredNodes,
@@ -317,7 +325,7 @@ export default Ember.Component.extend(ClusterDriver, {
 
             if (step <= 3) {
                 if (vpc) {
-                    set(this, 'config.virtualNetwork', vpc);
+                    set(this, 'cluster.%%DRIVERNAME%%EngineConfig.virtualNetwork', vpc);
                 }
             }
         }
@@ -337,10 +345,10 @@ export default Ember.Component.extend(ClusterDriver, {
         }
     }),
 
-    vpcsChanged: observer('config.virtualNetwork', 'vpcSubnetMode', function () {
+    vpcsChanged: observer('cluster.%%DRIVERNAME%%EngineConfig.virtualNetwork', 'vpcSubnetMode', function () {
         if (!this.primaryResource.isTransitioning) {
-            const vnet = get(this, 'config.virtualNetwork');
-            const subnets = get(this, 'config.subnets');
+            const vnet = get(this, 'cluster.%%DRIVERNAME%%EngineConfig.virtualNetwork');
+            const subnets = get(this, 'cluster.%%DRIVERNAME%%EngineConfig.subnets');
             const mode = get(this, 'vpcSubnetMode');
             const hasInitializedValues = vnet || subnets;
 
@@ -354,7 +362,7 @@ export default Ember.Component.extend(ClusterDriver, {
                 // the step to step 3 rather than remaining on the last
                 // page until the saving was complete.
             } else if (mode === 'default' && hasInitializedValues) {
-                setProperties(get(this, 'config'), {
+                setProperties(get(this, 'cluster.%%DRIVERNAME%%EngineConfig'), {
                     virtualNetwork: null,
                     subnets: [],
                 });
@@ -366,7 +374,9 @@ export default Ember.Component.extend(ClusterDriver, {
 
     versionChoices: computed('versions', function () {
         const {
-            config: { kubernetesVersion: initialVersion },
+            cluster: {
+                eksEngineConfig: { kubernetesVersion: initialVersion }
+            },
             app,
             kubernetesVersionContent,
             mode,
@@ -398,7 +408,7 @@ export default Ember.Component.extend(ClusterDriver, {
     }),
 
     filteredSubnets: computed('allSubnets', function () {
-        return get(this, 'allSubnets').filterBy('VpcId', get(this, 'config.virtualNetwork')).map((subnet) => {
+        return get(this, 'allSubnets').filterBy('VpcId', get(this, 'cluster.%%DRIVERNAME%%EngineConfig.virtualNetwork')).map((subnet) => {
             return {
                 subnetName: nameFromResource(subnet, 'SubnetId'),
                 subnetId: subnet.SubnetId,
@@ -416,20 +426,20 @@ export default Ember.Component.extend(ClusterDriver, {
     }),
 
     filteredSecurityGroups: computed('allSecurityGroups', function () {
-        return get(this, 'allSecurityGroups').filterBy('VpcId', get(this, 'config.virtualNetwork')).sortBy('GroupName');
+        return get(this, 'allSecurityGroups').filterBy('VpcId', get(this, 'cluster.%%DRIVERNAME%%EngineConfig.virtualNetwork')).sortBy('GroupName');
     }),
 
-    readableServiceRole: computed('config.serviceRole', function () {
+    readableServiceRole: computed('cluster.%%DRIVERNAME%%EngineConfig.serviceRole', function () {
         const roles = get(this, 'serviceRoles');
-        const selectedRole = get(this, 'config.serviceRole');
+        const selectedRole = get(this, 'cluster.%%DRIVERNAME%%EngineConfig.serviceRole');
         const match = roles.findBy('RoleName', selectedRole);
 
         return match && match.RoleName ? get(match, 'RoleName') : this.app.t('nodeDriver.amazoneks.role.noneSelected');
     }),
 
-    canSaveVPC: computed('vpcSubnetMode', 'selectedGroupedDetails', 'config.virtualNetwork', 'config.subnets.[]', function () {
+    canSaveVPC: computed('vpcSubnetMode', 'selectedGroupedDetails', 'cluster.%%DRIVERNAME%%EngineConfig.virtualNetwork', 'cluster.%%DRIVERNAME%%EngineConfig.subnets.[]', function () {
         const mode = get(this, 'vpcSubnetMode');
-        const config = get(this, 'config');
+        const config = get(this, 'cluster.%%DRIVERNAME%%EngineConfig');
         let disabled = true;
 
         if (mode === 'default' || get(config, 'virtualNetwork')) {
@@ -439,8 +449,8 @@ export default Ember.Component.extend(ClusterDriver, {
         return disabled;
     }),
 
-    canSaveSG: computed('config.securityGroups.[]', function () {
-        const sg = get(this, 'config.securityGroups');
+    canSaveSG: computed('cluster.%%DRIVERNAME%%EngineConfig.securityGroups.[]', function () {
+        const sg = get(this, 'cluster.%%DRIVERNAME%%EngineConfig.securityGroups');
 
         let disabled = true;
 
@@ -479,7 +489,7 @@ export default Ember.Component.extend(ClusterDriver, {
             let token = sessionToken.trim();
 
             set(auth, 'sessionToken', token);
-            set(this, 'config.sessionToken', token);
+            set(this, 'cluster.%%DRIVERNAME%%EngineConfig.sessionToken', token);
         }
 
         return auth;
@@ -492,7 +502,7 @@ export default Ember.Component.extend(ClusterDriver, {
             let def = vpcs.findBy('IsDefault');
 
             if (def && def.VpcId) {
-                set(this, 'config.virtualNetwork', get(def, 'VpcId'));
+                set(this, 'cluster.%%DRIVERNAME%%EngineConfig.virtualNetwork', get(def, 'VpcId'));
             }
 
             return set(this, 'allVpcs', vpcs);
@@ -616,7 +626,26 @@ export default Ember.Component.extend(ClusterDriver, {
     },
 
     willSave() {
+        // temporary measure put in place for rancher/rancher#24652
+        console.log('caiu aqui')
+        const {
+            cluster: {
+                eksEngineConfig: { subnets }
+            }
+        } = this;
 
+        if (isEmpty(subnets)) {
+            set(this, 'cluster.%%DRIVERNAME%%EngineConfig.subnets', []);
+        }
+        console.log(arguments);
+
+        let config = get(this, 'cluster.%%DRIVERNAME%%EngineConfig');
+        console.log(config);
+
+        return this._super(...arguments);
+        //console.log('chamando save');
+        //this.send('driverSave', cb);
+        //console.log('chamou save');
     },
 
     // Add custom validation beyond what can be done from the config API schema
